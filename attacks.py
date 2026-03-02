@@ -4,8 +4,8 @@ import torch.nn as nn
 
 class AdversarialAttacks:
     def __init__(self, model, device='cuda', mean=0.1307, std=0.3081):
-        self.model = model
         self.device = device
+        self.model = model.to(device)
         self.model.eval()
         self.mean = mean
         self.std = std
