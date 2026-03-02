@@ -3,13 +3,13 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
-from model import MNISTNet
+from model import MNISTNet, MLP, CNN, TransformerEncoder, get_model
 import os
 import ssl
-import urllib.request
+import argparse
 
 
-def train_model(epochs=10, batch_size=128, lr=0.001, device='cuda'):
+def train_model(model_name='mnistnet', epochs=10, batch_size=128, lr=0.001, device='cuda'):
     ssl._create_default_https_context = ssl._create_unverified_context
     
     transform = transforms.Compose([
@@ -20,7 +20,10 @@ def train_model(epochs=10, batch_size=128, lr=0.001, device='cuda'):
     train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
     
-    model = MNISTNet().to(device)
+    model = get_model(model_name).to(device)
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"\nModel: {model_name}")
+    print(f"Total parameters: {total_params:,}")
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     
@@ -56,12 +59,23 @@ def train_model(epochs=10, batch_size=128, lr=0.001, device='cuda'):
         print(f'Epoch [{epoch+1}/{epochs}] completed - Accuracy: {epoch_acc:.2f}%')
     
     os.makedirs('checkpoints', exist_ok=True)
-    torch.save(model.state_dict(), 'checkpoints/mnist_model.pth')
-    print("Model saved to checkpoints/mnist_model.pth")
+    model_path = f'checkpoints/{model_name}_model.pth'
+    torch.save(model.state_dict(), model_path)
+    print(f"Model saved to {model_path}")
     
     return model
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Train MNIST models')
+    parser.add_argument('--model', type=str, default='mnistnet',
+                        choices=['mnistnet', 'mlp', 'cnn', 'transformer'],
+                        help='Model architecture to train')
+    parser.add_argument('--epochs', type=int, default=10, help='Number of epochs')
+    parser.add_argument('--batch-size', type=int, default=128, help='Batch size')
+    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
+    args = parser.parse_args()
+    
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    train_model(epochs=10, device=device)
+    train_model(model_name=args.model, epochs=args.epochs, 
+                batch_size=args.batch_size, lr=args.lr, device=device)
